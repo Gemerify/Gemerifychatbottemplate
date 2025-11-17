@@ -426,10 +426,7 @@
         // Show chat interface immediately
         chatInterface.classList.add('active');
         
-        // Optionally: Don't load previous session to avoid unwanted message
-        // Just show empty chat ready for user input
-        
-        /* If you want to load a welcome message from your bot, uncomment this:
+        // Load welcome message from webhook
         const data = [{
             action: "loadPreviousSession",
             sessionId: currentSessionId,
@@ -457,8 +454,12 @@
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         } catch (error) {
             console.error('Error:', error);
+            // Fallback message in case of error
+            const botMessageDiv = document.createElement('div');
+            botMessageDiv.className = 'chat-message bot';
+            botMessageDiv.textContent = 'Hello! How can I help you today?';
+            messagesContainer.appendChild(botMessageDiv);
         }
-        */
     }
 
     async function sendMessage(message) {
