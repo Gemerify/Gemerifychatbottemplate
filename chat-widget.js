@@ -78,10 +78,68 @@
             color: var(--chat--color-font);
         }
 
-        .n8n-chat-widget .chat-interface {
+        .n8n-chat-widget .new-conversation {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            text-align: center;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .n8n-chat-widget .welcome-text {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--chat--color-font);
+            margin-bottom: 24px;
+            line-height: 1.3;
+        }
+
+        .n8n-chat-widget .new-chat-btn {
             display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, var(--chat--color-primary) 0%, var(--chat--color-secondary) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.3s;
+            font-weight: 500;
+            font-family: inherit;
+            margin-bottom: 12px;
+        }
+
+        .n8n-chat-widget .new-chat-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .n8n-chat-widget .message-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .n8n-chat-widget .response-text {
+            font-size: 14px;
+            color: var(--chat--color-font);
+            opacity: 0.7;
+            margin: 0;
+        }
+
+        .n8n-chat-widget .chat-interface {
+            display: none;
             flex-direction: column;
             height: 100%;
+        }
+
+        .n8n-chat-widget .chat-interface.active {
+            display: flex;
         }
 
         .n8n-chat-widget .chat-messages {
@@ -279,6 +337,24 @@
     const chatContainer = document.createElement('div');
     chatContainer.className = `chat-container${config.style.position === 'left' ? ' position-left' : ''}`;
     
+    const newConversationHTML = `
+        <div class="brand-header">
+            <img src="${config.branding.logo}" alt="${config.branding.name}">
+            <span>${config.branding.name}</span>
+            <button class="close-button">×</button>
+        </div>
+        <div class="new-conversation">
+            <h2 class="welcome-text">${config.branding.welcomeText}</h2>
+            <button class="new-chat-btn">
+                <svg class="message-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/>
+                </svg>
+                Send us a message
+            </button>
+            <p class="response-text">${config.branding.responseTimeText}</p>
+        </div>
+    `;
+
     const chatInterfaceHTML = `
         <div class="chat-interface">
             <div class="brand-header">
@@ -297,7 +373,7 @@
         </div>
     `;
     
-    chatContainer.innerHTML = chatInterfaceHTML;
+    chatContainer.innerHTML = newConversationHTML + chatInterfaceHTML;
     
     const toggleButton = document.createElement('button');
     toggleButton.className = `chat-toggle${config.style.position === 'left' ? ' position-left' : ''}`;
@@ -314,6 +390,7 @@
     const messagesContainer = chatContainer.querySelector('.chat-messages');
     const textarea = chatContainer.querySelector('textarea');
     const sendButton = chatContainer.querySelector('button[type="submit"]');
+    const newChatBtn = chatContainer.querySelector('.new-chat-btn');
 
     function generateUUID() {
         return crypto.randomUUID();
@@ -344,6 +421,11 @@
             });
 
             const responseData = await response.json();
+            
+            // Hide welcome screen and show chat interface
+            chatContainer.querySelector('.brand-header').style.display = 'none';
+            chatContainer.querySelector('.new-conversation').style.display = 'none';
+            chatInterface.classList.add('active');
 
             const botMessageDiv = document.createElement('div');
             botMessageDiv.className = 'chat-message bot';
@@ -393,6 +475,9 @@
         }
     }
     
+    // Handle "Send us a message" button click
+    newChatBtn.addEventListener('click', startNewConversation);
+    
     sendButton.addEventListener('click', () => {
         const message = textarea.value.trim();
         if (message) {
@@ -414,15 +499,13 @@
     
     toggleButton.addEventListener('click', () => {
         chatContainer.classList.toggle('open');
-        // Start conversation automatically when opening for the first time
-        if (chatContainer.classList.contains('open') && !isSessionStarted) {
-            startNewConversation();
-        }
     });
 
-    // Add close button handler
-    const closeButton = chatContainer.querySelector('.close-button');
-    closeButton.addEventListener('click', () => {
-        chatContainer.classList.remove('open');
+    // Add close button handlers
+    const closeButtons = chatContainer.querySelectorAll('.close-button');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            chatContainer.classList.remove('open');
+        });
     });
 })();
