@@ -132,14 +132,28 @@
             margin: 0;
         }
 
+        .n8n-chat-widget .new-conversation {
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        .n8n-chat-widget .new-conversation.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
         .n8n-chat-widget .chat-interface {
-            display: none;
+            display: flex;
             flex-direction: column;
             height: 100%;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
         }
 
         .n8n-chat-widget .chat-interface.active {
-            display: flex;
+            opacity: 1;
+            visibility: visible;
         }
 
         .n8n-chat-widget .chat-messages {
@@ -402,6 +416,20 @@
         currentSessionId = generateUUID();
         isSessionStarted = true;
         
+        // Hide welcome screen with smooth transition
+        const welcomeScreen = chatContainer.querySelector('.new-conversation');
+        const firstHeader = chatContainer.querySelector('.brand-header');
+        
+        welcomeScreen.classList.add('hidden');
+        firstHeader.style.display = 'none';
+        
+        // Show chat interface immediately
+        chatInterface.classList.add('active');
+        
+        // Optionally: Don't load previous session to avoid unwanted message
+        // Just show empty chat ready for user input
+        
+        /* If you want to load a welcome message from your bot, uncomment this:
         const data = [{
             action: "loadPreviousSession",
             sessionId: currentSessionId,
@@ -421,11 +449,6 @@
             });
 
             const responseData = await response.json();
-            
-            // Hide welcome screen and show chat interface
-            chatContainer.querySelector('.brand-header').style.display = 'none';
-            chatContainer.querySelector('.new-conversation').style.display = 'none';
-            chatInterface.classList.add('active');
 
             const botMessageDiv = document.createElement('div');
             botMessageDiv.className = 'chat-message bot';
@@ -435,9 +458,15 @@
         } catch (error) {
             console.error('Error:', error);
         }
+        */
     }
 
     async function sendMessage(message) {
+        // Initialize session on first message if not started
+        if (!currentSessionId) {
+            currentSessionId = generateUUID();
+        }
+        
         const messageData = {
             action: "sendMessage",
             sessionId: currentSessionId,
