@@ -24,6 +24,9 @@
             border: 1px solid rgba(133, 79, 255, 0.2);
             overflow: hidden;
             font-family: inherit;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.15s ease, transform 0.15s ease;
         }
 
         .n8n-chat-widget .chat-container.position-left {
@@ -34,6 +37,8 @@
         .n8n-chat-widget .chat-container.open {
             display: flex;
             flex-direction: column;
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .n8n-chat-widget .brand-header {
@@ -83,18 +88,27 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            padding: 20px;
+            padding: 30px;
             text-align: center;
             width: 100%;
-            max-width: 300px;
+            max-width: 320px;
         }
 
         .n8n-chat-widget .welcome-text {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: 600;
             color: var(--chat--color-font);
-            margin-bottom: 24px;
-            line-height: 1.3;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .n8n-chat-widget .welcome-subtitle {
+            font-size: 18px;
+            font-weight: 400;
+            color: var(--chat--color-font);
+            margin-bottom: 28px;
+            line-height: 1.4;
+            padding: 0 10px;
         }
 
         .n8n-chat-widget .new-chat-btn {
@@ -133,7 +147,7 @@
         }
 
         .n8n-chat-widget .new-conversation {
-            transition: opacity 0.2s ease, visibility 0.2s ease;
+            transition: opacity 0.15s ease, visibility 0.15s ease;
         }
 
         .n8n-chat-widget .new-conversation.hidden {
@@ -148,7 +162,7 @@
             height: 100%;
             opacity: 0;
             visibility: hidden;
-            transition: opacity 0.2s ease, visibility 0.2s ease;
+            transition: opacity 0.15s ease, visibility 0.15s ease;
         }
 
         .n8n-chat-widget .chat-interface.active {
@@ -189,6 +203,15 @@
             color: var(--chat--color-font);
             align-self: flex-start;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .n8n-chat-widget .chat-message.streaming {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
         }
 
         .n8n-chat-widget .chat-input {
@@ -310,8 +333,8 @@
             welcomeText: '',
             responseTimeText: '',
             poweredBy: {
-                text: 'Powered by n8n',
-                link: 'https://n8n.partnerlinks.io/m8a94i19zhqq?utm_source=nocodecreative.io'
+                text: 'Made with Gemerify.com',
+                link: 'https://gemerify.com'
             }
         },
         style: {
@@ -327,7 +350,11 @@
     const config = window.ChatWidgetConfig ? 
         {
             webhook: { ...defaultConfig.webhook, ...window.ChatWidgetConfig.webhook },
-            branding: { ...defaultConfig.branding, ...window.ChatWidgetConfig.branding },
+            branding: { 
+                ...defaultConfig.branding, 
+                ...window.ChatWidgetConfig.branding,
+                poweredBy: window.ChatWidgetConfig.branding?.poweredBy || defaultConfig.branding.poweredBy
+            },
             style: { ...defaultConfig.style, ...window.ChatWidgetConfig.style }
         } : defaultConfig;
 
@@ -351,6 +378,11 @@
     const chatContainer = document.createElement('div');
     chatContainer.className = `chat-container${config.style.position === 'left' ? ' position-left' : ''}`;
     
+    // Split welcomeText into two parts
+    const welcomeTextParts = config.branding.welcomeText.split('👋');
+    const welcomeGreeting = welcomeTextParts[0].trim() + ' 👋';
+    const welcomeQuestion = welcomeTextParts[1] ? welcomeTextParts[1].trim() : '';
+    
     const newConversationHTML = `
         <div class="brand-header">
             <img src="${config.branding.logo}" alt="${config.branding.name}">
@@ -358,12 +390,13 @@
             <button class="close-button">×</button>
         </div>
         <div class="new-conversation">
-            <h2 class="welcome-text">${config.branding.welcomeText}</h2>
+            <h2 class="welcome-text">${welcomeGreeting}</h2>
+            ${welcomeQuestion ? `<p class="welcome-subtitle">${welcomeQuestion}</p>` : ''}
             <button class="new-chat-btn">
                 <svg class="message-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
                     <path fill="currentColor" d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H5.2L4 17.2V4h16v12z"/>
                 </svg>
-                Send us a message
+                Envoyez-nous un message
             </button>
             <p class="response-text">${config.branding.responseTimeText}</p>
         </div>
@@ -378,8 +411,8 @@
             </div>
             <div class="chat-messages"></div>
             <div class="chat-input">
-                <textarea placeholder="Tapez votre message ici..." rows="1"></textarea>
-                <button type="submit">Send</button>
+                <textarea placeholder="Écrivez votre message ici..." rows="1"></textarea>
+                <button type="submit">Envoyer</button>
             </div>
             <div class="chat-footer">
                 <a href="${config.branding.poweredBy.link}" target="_blank">${config.branding.poweredBy.text}</a>
@@ -444,8 +477,8 @@
             action: "sendMessage",
             sessionId: currentSessionId,
             route: config.webhook.route,
-            chatInput: message, 
-            metadata: {bonjour
+            chatInput: message,
+            metadata: {
                 userId: ""
             }
         };
@@ -454,6 +487,13 @@
         userMessageDiv.className = 'chat-message user';
         userMessageDiv.textContent = message;
         messagesContainer.appendChild(userMessageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Create bot message container for streaming
+        const botMessageDiv = document.createElement('div');
+        botMessageDiv.className = 'chat-message bot streaming';
+        botMessageDiv.textContent = '';
+        messagesContainer.appendChild(botMessageDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
         try {
@@ -466,14 +506,27 @@
             });
             
             const data = await response.json();
+            const fullText = Array.isArray(data) ? data[0].output : data.output;
             
-            const botMessageDiv = document.createElement('div');
-            botMessageDiv.className = 'chat-message bot';
-            botMessageDiv.textContent = Array.isArray(data) ? data[0].output : data.output;
-            messagesContainer.appendChild(botMessageDiv);
-            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            // Simulate streaming effect
+            botMessageDiv.textContent = '';
+            botMessageDiv.classList.remove('streaming');
+            let currentIndex = 0;
+            
+            const streamInterval = setInterval(() => {
+                if (currentIndex < fullText.length) {
+                    botMessageDiv.textContent += fullText[currentIndex];
+                    currentIndex++;
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                } else {
+                    clearInterval(streamInterval);
+                }
+            }, 20); // 20ms between each character for smooth streaming
+            
         } catch (error) {
             console.error('Error:', error);
+            botMessageDiv.classList.remove('streaming');
+            botMessageDiv.textContent = 'Désolé, une erreur est survenue. Veuillez réessayer.';
         }
     }
     
@@ -511,4 +564,3 @@
         });
     });
 })();
-
