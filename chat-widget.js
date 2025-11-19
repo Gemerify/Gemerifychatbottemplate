@@ -92,13 +92,6 @@
             text-align: center;
             width: 100%;
             max-width: 320px;
-            transition: opacity 0.15s ease, visibility 0.15s ease;
-        }
-
-        .n8n-chat-widget .new-conversation.hidden {
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
         }
 
         .n8n-chat-widget .welcome-text {
@@ -153,6 +146,16 @@
             margin: 0;
         }
 
+        .n8n-chat-widget .new-conversation {
+            transition: opacity 0.15s ease, visibility 0.15s ease;
+        }
+
+        .n8n-chat-widget .new-conversation.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
         .n8n-chat-widget .chat-interface {
             display: flex;
             flex-direction: column;
@@ -200,6 +203,31 @@
             color: var(--chat--color-font);
             align-self: flex-start;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .n8n-chat-widget .chat-message.bot ul {
+            margin: 8px 0;
+            padding-left: 20px;
+            list-style-type: disc;
+        }
+
+        .n8n-chat-widget .chat-message.bot li {
+            margin: 4px 0;
+        }
+
+        .n8n-chat-widget .chat-message.bot strong {
+            font-weight: 600;
+            color: var(--chat--color-font);
+        }
+
+        .n8n-chat-widget .chat-message.bot a {
+            color: var(--chat--color-primary);
+            text-decoration: underline;
+            transition: opacity 0.2s;
+        }
+
+        .n8n-chat-widget .chat-message.bot a:hover {
+            opacity: 0.8;
         }
 
         .n8n-chat-widget .chat-message.streaming {
@@ -459,12 +487,50 @@
         // Add instant welcome message (no webhook call)
         const botMessageDiv = document.createElement('div');
         botMessageDiv.className = 'chat-message bot';
-        botMessageDiv.textContent = config.branding.welcomeText || 'Bonjour ! 👋 Comment puis-je vous aider ?';
+        botMessageDiv.innerHTML = markdownToHTML(config.branding.welcomeText || 'Bonjour ! 👋 Comment puis-je vous aider ?');
         messagesContainer.appendChild(botMessageDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
 
-    async function sendMessage(message) {
+    // Simple Markdown to HTML converter
+    function markdownToHTML(text) {
+        // Convert bold **text** to <strong>
+        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Convert links [text](url) to <a>
+        text = text.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank" style="color: var(--chat--color-primary); text-decoration: underline;">$1</a>');
+        
+        // Convert bullet points - text to <li>
+        text = text.replace(/^- (.+)$/gm, '<li>$1</li>');
+        
+        // Wrap consecutive <li> in <ul>
+        text = text.replace(/(<li>.*?<\/li>\n?)+/g, '<ul style="margin: 8px 0; padding-left: 20px;">        // Add instant welcome message (no webhook call)
+        const botMessageDiv = document.createElement('div');
+        botMessageDiv.className = 'chat-message bot';
+        botMessageDiv.textContent = config.branding.welcomeText || 'Bonjour ! 👋 Comment puis-je vous aider ?';
+        messagesContainer.appendChild(botMessageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }</ul>');
+        
+        // Convert line breaks to <br>
+        text = text.replace(/\n/g, '<br>');
+        
+        return text;
+    }
+
+    // Simple Markdown to HTML converter
+    function markdownToHTML(text) {
+        // Convert bold **text** to <strong>
+        text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        
+        // Convert links [text](url) to <a>
+        text = text.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2" target="_blank" style="color: var(--chat--color-primary); text-decoration: underline;">$1</a>');
+        
+        // Convert bullet points - text to <li>
+        text = text.replace(/^- (.+)$/gm, '<li>$1</li>');
+        
+        // Wrap consecutive <li> in <ul>
+        text = text.replace(/(<li>.*?<\/li>\n?)+/g, '<ul style="margin: 8px 0; padding-left: 20px;">    async function sendMessage(message) {
         // Initialize session on first message if not started
         if (!currentSessionId) {
             currentSessionId = generateUUID();
@@ -518,12 +584,90 @@
                 } else {
                     clearInterval(streamInterval);
                 }
-            }, 20);
+            }, 20); // 20ms between each character for smooth streaming
             
         } catch (error) {
             console.error('Error:', error);
             botMessageDiv.classList.remove('streaming');
             botMessageDiv.textContent = 'Désolé, une erreur est survenue. Veuillez réessayer.';
+        }
+    }</ul>');
+        
+        // Convert line breaks to <br>
+        text = text.replace(/\n/g, '<br>');
+        
+        return text;
+    }
+
+    async function sendMessage(message) {
+        // Initialize session on first message if not started
+        if (!currentSessionId) {
+            currentSessionId = generateUUID();
+        }
+        
+        const messageData = {
+            action: "sendMessage",
+            sessionId: currentSessionId,
+            route: config.webhook.route,
+            chatInput: message,
+            metadata: {
+                userId: ""
+            }
+        };
+
+        const userMessageDiv = document.createElement('div');
+        userMessageDiv.className = 'chat-message user';
+        userMessageDiv.textContent = message;
+        messagesContainer.appendChild(userMessageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        // Create bot message container for streaming
+        const botMessageDiv = document.createElement('div');
+        botMessageDiv.className = 'chat-message bot streaming';
+        botMessageDiv.innerHTML = '';
+        messagesContainer.appendChild(botMessageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+        try {
+            const response = await fetch(config.webhook.url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(messageData)
+            });
+            
+            const data = await response.json();
+            const fullText = Array.isArray(data) ? data[0].output : data.output;
+            
+            // Convert Markdown to HTML
+            const htmlText = markdownToHTML(fullText);
+            
+            // Simulate streaming effect with HTML
+            botMessageDiv.innerHTML = '';
+            botMessageDiv.classList.remove('streaming');
+            let currentIndex = 0;
+            let buffer = '';
+            
+            const streamInterval = setInterval(() => {
+                if (currentIndex < htmlText.length) {
+                    buffer += htmlText[currentIndex];
+                    // Only update when we have complete HTML tags or regular characters
+                    if (htmlText[currentIndex] === '>' || htmlText[currentIndex] !== '<') {
+                        botMessageDiv.innerHTML = buffer;
+                    }
+                    currentIndex++;
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                } else {
+                    botMessageDiv.innerHTML = buffer;
+                    clearInterval(streamInterval);
+                }
+            }, 20); // 20ms between each character for smooth streaming
+            
+        } catch (error) {
+            console.error('Error:', error);
+            botMessageDiv.classList.remove('streaming');
+            botMessageDiv.innerHTML = 'Désolé, une erreur est survenue. Veuillez réessayer.';
         }
     }
     
