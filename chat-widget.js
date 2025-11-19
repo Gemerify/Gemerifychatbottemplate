@@ -504,7 +504,7 @@
         text = text.replace(/^- (.+)$/gm, '<li>$1</li>');
         
         // Wrap consecutive <li> in <ul>
-        text = text.replace(/(<li>.*?<\/li>\n?)+/g, '<ul style="margin: 8px 0; padding-left: 20px;">        // Add instant welcome message (no webhook call)
+        text = text.replace(/(<li>.*?<\/li>\n?)+/g, '<ul>$&</ul>');
         const botMessageDiv = document.createElement('div');
         botMessageDiv.className = 'chat-message bot';
         botMessageDiv.textContent = config.branding.welcomeText || 'Bonjour ! 👋 Comment puis-je vous aider ?';
@@ -705,3 +705,4 @@
         });
     });
 })();
+
